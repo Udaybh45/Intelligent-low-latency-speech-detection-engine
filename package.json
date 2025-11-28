@@ -8,12 +8,13 @@
     "dev": "nodemon server.js"
   },
   "dependencies": {
+    "bcrypt": "^6.0.0",
+    "bcryptjs": "^2.4.3",
     "body-parser": "^2.2.1",
     "dotenv": "^17.2.3",
     "express": "^5.1.0",
+    "express-session": "^1.18.2",
     "nodemon": "^3.1.11",
-    "pg": "^8.16.3",
-    "express-session": "^1.17.3",
-    "bcryptjs": "^2.4.3"
+    "pg": "^8.16.3"
   }
 }

@@ -34,14 +34,33 @@ app.get("/", (req, res) => {
 app.use(express.static(path.join(__dirname, "public")));
 
 const { Pool } = pg;
-const pool = new Pool({
-  connectionString:
-    process.env.DATABASE_URL || process.env.PG_CONNECTION || undefined,
-});
+// Configure pool with SSL when using a remote connection string (e.g. Render/Postgres)
+const connectionString =
+  process.env.DATABASE_URL || process.env.PG_CONNECTION || undefined;
+const poolOptions = { connectionString };
+if (connectionString && connectionString.startsWith("postgres")) {
+  // Many hosted Postgres providers require SSL; disable certificate verification
+  // for convenience in development. In production, you should validate certificates.
+  poolOptions.ssl = { rejectUnauthorized: false };
+}
+const pool = new Pool(poolOptions);
 
 // Initialize DB tables if they don't exist
+// Initialize DB tables if they don't exist and verify connection
 (async function initDB() {
   try {
+    if (!connectionString) {
+      console.warn(
+        "No DATABASE_URL/PG_CONNECTION provided — skipping remote DB setup."
+      );
+    }
+
+    // Test connection
+    const client = await pool.connect();
+    await client.query("SELECT 1");
+    client.release();
+
+    // Ensure tables exist
     await pool.query(`
       CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
@@ -61,6 +80,12 @@ const pool = new Pool({
     console.log("DB initialized");
   } catch (err) {
     console.error("Error initializing DB:", err);
+    // If connection reset, provide actionable hint
+    if (err && err.code === "ECONNRESET") {
+      console.error(
+        "ECONNRESET: connection was reset by the server. Possible causes: network/firewall, wrong credentials, or the server requires SSL."
+      );
+    }
   }
 })();
 
